@@ -1,0 +1,10 @@
+name: fcnd
+channels:
+    - conda-forge
+dependencies:
+    - python==3.6
+    - numpy
+    - matplotlib
+    - jupyter
+    - pip:
+        - git+https://github.com/udacity/udacidrone.git
