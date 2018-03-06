@@ -1,5 +1,6 @@
 """
 Backyard Flyer Project.
+Some codes are from solution, with some bug fixed, redudent lines removed.
 """
 import time
 import numpy as np
