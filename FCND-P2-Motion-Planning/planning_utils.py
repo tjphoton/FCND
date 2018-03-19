@@ -45,7 +45,6 @@ def create_grid(data, drone_altitude, safety_distance):
 class Action(Enum):
     """
     An action is represented by a 3 element tuple.
-
     The first 2 values are the delta of the action relative
     to the current grid position. The third and final value
     is the cost of performing the action.
