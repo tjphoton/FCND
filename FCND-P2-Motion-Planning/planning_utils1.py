@@ -81,21 +81,21 @@ def valid_actions(grid, current_node):
 
     if x - 1 < 0 or grid[x - 1, y] == 1:
         valid_actions.remove(Action.NORTH)
-    if x + 1 > n or grid[x + 1, y] == 1:
+    if x + 1 > m or grid[x + 1, y] == 1:
         valid_actions.remove(Action.SOUTH)
     if y - 1 < 0 or grid[x, y - 1] == 1:
         valid_actions.remove(Action.WEST)
-    if y + 1 > m or grid[x, y + 1] == 1:
+    if y + 1 > n or grid[x, y + 1] == 1:
         valid_actions.remove(Action.EAST)
 
-    if (x - 1 < 0 and y - 1 < 0) or grid[x - 1, y - 1] == 1:
+    if x - 1 < 0 or y - 1 < 0 or grid[x - 1, y - 1] == 1:
         valid_actions.remove(Action.NORTH_WEST)
-    if (x - 1 < 0 and y + 1 > m) or grid[x - 1, y + 1] == 1:
+    if x - 1 < 0 or y + 1 > n or grid[x - 1, y + 1] == 1:
         valid_actions.remove(Action.NORTH_EAST)
-    if (x + 1 > n and y - 1 < 0) or grid[x + 1, y - 1] == 1:
+    if x + 1 > m or y - 1 < 0 or grid[x + 1, y - 1] == 1:
         valid_actions.remove(Action.SOUTH_WEST)
-    if (x + 1 > n and y + 1 > m) or grid[x + 1, y + 1] == 1:
-        valid_actions.remove(Action.SOUTH_EAST)
+    if x + 1 > m or y + 1 > n or grid[x + 1, y + 1] == 1:
+        valid_actions.remove(Action.SOUTH_EAST)1] == 1:
 
     return valid_actions
 

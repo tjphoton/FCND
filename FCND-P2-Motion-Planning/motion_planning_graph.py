@@ -50,7 +50,9 @@ class MotionPlanning(Drone):
                 self.waypoint_transition()
         elif self.flight_state == States.WAYPOINT:
             print("   local position", self.local_position, "global position", self.global_position)
-            if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 2.0:
+            print("   local velocity", self.local_velocity, "velocity", np.linalg.norm(self.local_velocity))
+            # if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 2.0:
+            if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < np.linalg.norm(self.local_velocity)*0.2:
                 if len(self.waypoints) > 0:
                     self.waypoint_transition()
                 else:
@@ -148,6 +150,7 @@ class MotionPlanning(Drone):
         data = np.loadtxt('colliders.csv', delimiter=',', dtype='Float64', skiprows=2)
         
         # # Create Voronoi Graph for a particular altitude and safety margin around obstacles
+        # # Only need to run once, save the graph to a file. Next time just load graph file 
         # t1 = time.time()
         # edges= create_voronoi(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         # t_edges = time.time() - t1
@@ -163,8 +166,8 @@ class MotionPlanning(Drone):
         # t_graph = time.time() - t2
         # print("It takes {} seconds to create load edges to networkx graph".format(np.round(t_graph,2)))
 
-        # nx.write_gpickle(G, "voronoi2.gpickle")
-        G = nx.read_gpickle("voronoi2.gpickle")
+        # nx.write_gpickle(G, "voronoi.gpickle")
+        G = nx.read_gpickle("voronoi.gpickle")
 
         # Convert start position to current position rather than map center
         north_offset, east_offset, _ , _ = calc_offset_gridsize(data)
