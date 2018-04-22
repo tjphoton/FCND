@@ -15,10 +15,10 @@ source activate fcnd
 python motion_planning.py
 ```
 
-The quad fly a jerky path of waypoints to the northeast. It is becuase in the `planning_utils.py`, the grid path planning algorithm only implemented 4 possible actions, north, west, east, south. When asked to find a path to the north east goal position diagonal to the start location, the planner has no choice but to give a solution to follow a jerky north, east, north, east, ... , north, east action path.
+The quad fly a jerky path of waypoints to the northeast. It is becuase in the `planning_utils.py`, the grid path planning algorithm only implemented 4 possible actions: north, west, east, south. When asked to find a path to the north east goal position diagonal to the start location, the planner has no choice but to give a solution to follow a jerky north, east, north, east, ... , north, east action path.
 
 The other difference about `motion_planning.py` from the `backyard_flyer_solution.py` script inlcudes:
-1. There is a new PLANNING state added, which is excuted after ARMING state and before TAKEOFF state.
+1. There is a new PLANNING state, being excuted after ARMING state and before TAKEOFF state.
 2. After the ARMING state, a new function `plan_path()` is invoked, it does the following things:
   * set the state to `States.PLANNING`, 
   * load the 2.5D map in the colliders.csv file describing the environment and obstacle,
@@ -145,7 +145,7 @@ After pruning unecessary waypoints, there are only **22** out of 489 waypointsle
 ![collinearity determinant](./misc/path_pruned.png)
 
 ### Execute the flight
-The drone in the simulator is able to fly following the found path. One problem is it takes such a long time for the A* algorithm to calculate the path. The connection between the script and simulator timed out. I have to run the script twice, first time to calculate a path, second time skip the calculation, fed previous calculated the waypoints to the simulator. The drone is able to fly from start to goal postion!
+The drone in the simulator is able to fly following the found path. One problem is it takes a long time for the A* algorithm to calculate the path. The connection between the script and simulator timed out during this lenthy calculation. To work around it, I ran the script twice, first time to calculate a path, second time skip the calculation, fed previous calculated the waypoints to the simulator. The drone is able to fly from start to goal postion! The green spheres in the graph indicate each waypoints fed by the search algorithm after pruning.
 
 ![collinearity determinant](./misc/fly1.png)
 ![collinearity determinant](./misc/fly2.png)
@@ -182,6 +182,8 @@ With the help a built-in implementation of the Voronoi method from Python's SciP
 from scipy.spatial import Voronoi
 ```
 we may feed in a set of obstacles points to create a Voronoi() object that contains a graph of the deges that define the midline in free space between the obstacles, or in other words, the nodes in a graph that can navigate between the obstacles. Additional step is needed to check whether edgess are in collision with obstacles.
+
+Note that the position of the top of the buiding is guaranteed to be an obstacle. It is possible that a start location is also on the top of the building. It is thus necessary to find closest points to the start and goal points on the Voronoi graph before start the path search from these two graph points.
 
 A* search algorithm is modified accordingly. Instead of expending and checking exploration frontier to a fixed number of neigbors, the graph search expends to a variable number of neigboring points through its edge.
 
