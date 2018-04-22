@@ -22,6 +22,9 @@ The other difference about `motion_planning.py` from the `backyard_flyer_solutio
 2. After the ARMING state, a new function `plan_path()` is invoked, it does the following things:
   * set the state to `States.PLANNING`, 
   * load the 2.5D map in the colliders.csv file describing the environment and obstacle,
+
+  ![Obstacle Map](./misc/city_obstacle_map.png)
+
   * discretize the environment into a grid representation,
   * define the start and goal locations,
   * perform a search using A* search algorithm,
@@ -68,10 +71,10 @@ But I found these lines of code are not necessary. Once global home position is 
 
 To find the start postion on the grid, subtract the lower left corner local position of the map from the current start local position. The original (0,0) shifted from the center of the map to the lower left corner (plus some safety margin).
 
-'''
+```
 grid_start = (int(self.local_position[0])-north_offset, 
               int(self.local_position[1])-east_offset)
-'''
+```
 
 #### 4. Set grid goal position from geodetic coords
 
@@ -85,8 +88,13 @@ grid_goal = (int(goal_local[0])-north_offset,
              int(goal_local[1])-east_offset)
 ```
 
+The map below shows the location of the start (in green) and goal (in read) location.
+ ![Obstacle Map](./misc/start_goal_loc.png)
+
+With start and goal location set on the map, we may start search for a posssible path to connect them!
+
 #### 5. Modify A* to include diagonal motion
-The code in planning_utils() is modified the A* implementation to include diagonal motions on the grid that have a cost of sqrt(2).
+The code in `planning_utils()` is modified the A* implementation to include diagonal motions on the grid that have a cost of sqrt(2).
 
 Add the following 4 possible diagnal motion actions to the `Action()` class:
 ```
@@ -123,7 +131,7 @@ if x + 1 > m or y + 1 > n or grid[x + 1, y + 1] == 1:
 
 Collinearity test is used to check whether waypoints are on the (almost) same stargith line. Then simply to prune the path of unnecessary waypoints that are in the middle of the same straight lines. 
 
-To check collinearity of two dimensional points, evaluating the determinant with the z coordinate set to 1, the determinant being equal to zero indicates that the area of the triangle described by those three points is zero and is a sufficient condition for collinearity:
+To check collinearity of two dimensional points, evaluating the determinant below. The determinant being equal to zero indicates that the area of the triangle described by those three points is zero and is a sufficient condition for collinearity:
 
 ![collinearity determinant](./misc/collinearity.png)
 
@@ -191,13 +199,4 @@ Here's | A | Snappy | Table
 2 | a | b | c
 3 | *italic* | text | 403
 4 | 2 | 3 | abcd
-
-And here's a lovely image of my results (ok this image has nothing to do with it, but it's a nice example of how to include images in your writeup!)
-![Top Down View](./misc/high_up.png)
-
-And here is a lovely picture of our downtown San Francisco environment from above!
-![Map of SF](./misc/map.png)
-
-Meanwhile, here's a picture of me flying through the trees!
-![Forest Flying](./misc/in_the_trees.png)
 

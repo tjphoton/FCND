@@ -11,7 +11,7 @@ from planning_utils import a_star_graph, heuristic, prune_path
 from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
 from udacidrone.messaging import MsgID
-from udacidrone.frame_utils import global_to_local
+from udacidrone.frame_utils import global_to_local, local_to_global
 
 goal_global = (-122.4007, 37.7954, 28.0)
 # goal_global = (-122.400835, 37.795407, 0.0)
@@ -190,6 +190,12 @@ class MotionPlanning(Drone):
         goal_ne_g = closest_point(G, grid_goal)
         print("Start localtion on graph:", start_ne_g)
         print("Goal localtion on graph:", goal_ne_g)
+
+        goal_g_local = (goal_ne_g[0] + north_offset,
+                        goal_ne_g[1] + east_offset,
+                        0)
+        goal_g_global = local_to_global(goal_g_local, self.global_home)
+        print("Goal global location:", goal_g_global)
 
         # A* graph search for a path
         t3 = time.time()
