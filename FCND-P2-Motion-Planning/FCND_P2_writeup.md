@@ -140,46 +140,12 @@ To check collinearity of two dimensional points, evaluating the determinant belo
 
 In the real world, points might not be exactly on a line, but we may still treat them as collinear. A threshold, epsilon, may be introduced to indicate how close to zero the determinant must be in order to consider the points to be collinear. This allows us to impose a criterion for accepting points that are almost collinear.
 
-
-```
-# check whether three points on collinear
-def collinearity_check(p1, p2, p3, epsilon=1e-6):   
-    m = np.concatenate((p1, p2, p3), 0)
-    det = np.linalg.det(m)
-    return abs(det) < epsilon
-
-# remove middle point if three points are collinear
-def prune_path(path):
-    # pruned_path = [p for p in path]
-    pruned_path = path
-    
-    i = 0
-    while i < len(pruned_path) - 2:
-        p1 = point(pruned_path[i])
-        p2 = point(pruned_path[i+1])
-        p3 = point(pruned_path[i+2])
-        
-        # If the 3 points are in a line remove
-        # the 2nd point.
-        # The 3rd point now becomes and 2nd point
-        # and the check is redone with a new third point
-        # on the next iteration.
-        if collinearity_check(p1, p2, p3):
-            # Something subtle here but we can mutate
-            # `pruned_path` freely because the length
-            # of the list is check on every iteration.
-            pruned_path.remove(pruned_path[i+1])
-        else:
-            i += 1
-    return pruned_path
-```
-
 After pruning unecessary waypoints, there are only **22** out of 489 waypointsleft in the path.
 
 ![collinearity determinant](./misc/path_pruned.png)
 
 ### Execute the flight
-The drone in the simulator is able to fly following the found path. One problem is it takes such a long time for the A* algorithm to calculate the path. The connection between the script and simulator timeed out. I have to run the script twice, the first time to calculated the path, and the second time skip the calculation, fed previous calculated the waypoints to the simulator. The drone is able to fly from start to goal postion!
+The drone in the simulator is able to fly following the found path. One problem is it takes such a long time for the A* algorithm to calculate the path. The connection between the script and simulator timed out. I have to run the script twice, first time to calculate a path, second time skip the calculation, fed previous calculated the waypoints to the simulator. The drone is able to fly from start to goal postion!
 
 ![collinearity determinant](./misc/fly1.png)
 ![collinearity determinant](./misc/fly2.png)
@@ -190,11 +156,6 @@ The drone in the simulator is able to fly following the found path. One problem 
 ### Helix trajectory
 Just for fun, I created waypoints that follows the helix trajectory:
 ```
-r = 20
-w = 20
-v_h = 1
-T = 100
-dt = 1
 for t in np.arange(0, T, dt):
     pt = [r*np.cos(np.deg2rad(w*t)), 
           r*np.sin(np.deg2rad(w*t)),
@@ -213,11 +174,24 @@ A few pictures below:
 ![collinearity determinant](./misc/helix4.png)
 ![collinearity determinant](./misc/helix5.png)
 
-### Try flying more complex trajectories with Graph search and add heading commands to your waypoints
-In this project, things are set up nicely to fly right-angled trajectories, where you ascend to a particular altitude, fly a path at that fixed altitude, then land vertically. However, you have the capability to send 3D waypoints and in principle you could fly any trajectory you like. Rather than simply setting a target altitude, try sending altitude with each waypoint and set your goal location on top of a building!
+### Fly to the top of a building
+To practice graph search and fly complex 3D trajectory so drone can be landed on the top of a building, one may adopt a time consuming 3D voxel grid search, or 3D random sampling and KD tree technique to connect nearest neighbor points. I took a shortcut in the project, reduced the search dimention to 2D to use Voronoi graph search. A Voronoi graph at a particular altitude was created once for an obstacle map and save to a file to save time for next time usage. 
 
-In the default setup, you're sending waypoints made up of NED position and heading with heading set to 0 in the default setup. Try passing a unique heading with each waypoint. If, for example, you want to send a heading to point to the next waypoint, it might look like this:
+With the help a built-in implementation of the Voronoi method from Python's SciPy library,  
+```
+from scipy.spatial import Voronoi
+```
+we may feed in a set of obstacles points to create a Voronoi() object that contains a graph of the deges that define the midline in free space between the obstacles, or in other words, the nodes in a graph that can navigate between the obstacles. Additional step is needed to check whether edgess are in collision with obstacles.
 
+A* search algorithm is modified accordingly. Instead of expending and checking exploration frontier to a fixed number of neigbors, the graph search expends to a variable number of neigboring points through its edge.
+
+The graph search result shown on the map:
+![collinearity determinant](./misc/graph_search.png)
+
+The change in the 3rd dimention is achived by gradualy increasing the altitude of it's way points proportional to the distance to the goal location with additional hight added to the final goal altitude so there's room for drone to land.
+
+### Adding heading commands to your waypoints
+In the default setup, waypoints are made up of NED position and headings are set to 0 in the default setup. When sending a heading to point to the next waypoint, drone can adjust its heading on the way to make sure it will always fly forward!
 ```python
 # Define two waypoints with heading = 0 for both
 wp1 = [n1, e1, a1, 0]
@@ -227,3 +201,4 @@ wp2[3] = np.arctan2((wp2[1]-wp1[1]), (wp2[0]-wp1[0]))
 
 ```
 
+The final video to fly to the top of the building can be found [here](P2_motion_planning.mp4).
