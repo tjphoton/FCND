@@ -185,15 +185,37 @@ The drone in the simulator is able to fly following the found path. One problem 
 ![collinearity determinant](./misc/fly2.png)
 ![collinearity determinant](./misc/fly3.png)
 ![collinearity determinant](./misc/fly4.png)
+![collinearity determinant](./misc/fly5.png)
 
+### Helix trajectory
+Just for fun, I created waypoints that follows the helix trajectory:
+```
+r = 20
+w = 20
+v_h = 1
+T = 100
+dt = 1
+for t in np.arange(0, T, dt):
+    pt = [r*np.cos(np.deg2rad(w*t)), 
+          r*np.sin(np.deg2rad(w*t)),
+          TARGET_ALTITUDE + v_h*t,
+          0]
+    helix.append(pt)
+```
 
-### Try flying more complex trajectories
+The link to the movie is [here](./helix.mov)
+
+A few pictures below:
+
+![collinearity determinant](./misc/helix1.png)
+![collinearity determinant](./misc/helix2.png)
+![collinearity determinant](./misc/helix3.png)
+![collinearity determinant](./misc/helix4.png)
+![collinearity determinant](./misc/helix5.png)
+
+### Try flying more complex trajectories with Graph search and add heading commands to your waypoints
 In this project, things are set up nicely to fly right-angled trajectories, where you ascend to a particular altitude, fly a path at that fixed altitude, then land vertically. However, you have the capability to send 3D waypoints and in principle you could fly any trajectory you like. Rather than simply setting a target altitude, try sending altitude with each waypoint and set your goal location on top of a building!
 
-### Adjust your deadbands
-Adjust the size of the deadbands around your waypoints, and even try making deadbands a function of velocity. To do this, you can simply modify the logic in the `local_position_callback()` function.
-
-### Add heading commands to your waypoints
 In the default setup, you're sending waypoints made up of NED position and heading with heading set to 0 in the default setup. Try passing a unique heading with each waypoint. If, for example, you want to send a heading to point to the next waypoint, it might look like this:
 
 ```python
@@ -204,12 +226,4 @@ wp2 = [n2, e2, a2, 0]
 wp2[3] = np.arctan2((wp2[1]-wp1[1]), (wp2[0]-wp1[0]))
 
 ```
-
-
-Here's | A | Snappy | Table
---- | --- | --- | ---
-1 | `highlight` | **bold** | 7.41
-2 | a | b | c
-3 | *italic* | text | 403
-4 | 2 | 3 | abcd
 
