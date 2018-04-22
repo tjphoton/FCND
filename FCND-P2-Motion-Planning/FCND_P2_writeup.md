@@ -186,9 +186,14 @@ we may feed in a set of obstacles points to create a Voronoi() object that conta
 A* search algorithm is modified accordingly. Instead of expending and checking exploration frontier to a fixed number of neigbors, the graph search expends to a variable number of neigboring points through its edge.
 
 The graph search result shown on the map:
+
 ![collinearity determinant](./misc/graph_search.png)
 
 The change in the 3rd dimention is achived by gradualy increasing the altitude of it's way points proportional to the distance to the goal location with additional hight added to the final goal altitude so there's room for drone to land.
+
+![collinearity determinant](./misc/landing1.png)
+![collinearity determinant](./misc/landing2.png)
+
 
 ### Adding heading commands to your waypoints
 In the default setup, waypoints are made up of NED position and headings are set to 0 in the default setup. When sending a heading to point to the next waypoint, drone can adjust its heading on the way to make sure it will always fly forward!
