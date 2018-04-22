@@ -5,7 +5,7 @@ from enum import Enum, auto
 
 import numpy as np
 
-from planning_utils1 import a_star, heuristic, create_grid, prune_path
+from planning_utils_grid import a_star, heuristic, create_grid, prune_path
 from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
 from udacidrone.messaging import MsgID
