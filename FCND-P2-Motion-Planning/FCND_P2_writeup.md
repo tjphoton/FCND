@@ -175,7 +175,7 @@ A few pictures below:
 ![collinearity determinant](./misc/helix5.png)
 
 ### Fly to the top of a building
-To practice graph search and fly complex 3D trajectory so drone can be landed on the top of a building, one may adopt a time consuming 3D voxel grid search, or 3D random sampling and KD tree technique to connect nearest neighbor points. I took a shortcut in the project, reduced the search dimention to 2D to use Voronoi graph search. A Voronoi graph at a particular altitude was created once for an obstacle map and save to a file to save time for next time usage. 
+To practice graph search and fly complex 3D trajectory so drone can land on the top of a building, one may adopt a time consuming 3D voxel grid search, or 3D random sampling and KD tree technique to connect nearest neighbor points. I took a shortcut in the project, reduced the search dimention to 2D to use Voronoi graph search. A Voronoi graph at a particular altitude was created once for an obstacle map and save to a file to save time for next time usage. 
 
 With the help a built-in implementation of the Voronoi method from Python's SciPy library,  
 ```
