@@ -166,19 +166,21 @@ class MotionPlanning(Drone):
         # add diagonal motions with a cost of sqrt(2) to your A* implementation
         # or move to a different search space such as a graph (not done here)
         print('Local Start and Goal: ', grid_start, grid_goal)
-        path, _ = a_star(grid, heuristic, grid_start, grid_goal)
+        # path, _ = a_star(grid, heuristic, grid_start, grid_goal)
         
-        # prune path to minimize number of waypoints
-        print(path)
-        print(len(path), "waypoints before pruning")
-        path = prune_path(path)
-        print(len(path), "waypoints after pruning")
+        # # prune path to minimize number of waypoints
+        # print(path)
+        # print(len(path), "waypoints before pruning")
+        # path = prune_path(path)
+        # print(len(path), "waypoints after pruning")
 
         # TODO (if you're feeling ambitious): Try a different approach altogether!
 
-        # Convert path to waypoints
-        waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in path]
-        print(waypoints)
+        # # Convert path to waypoints
+        # waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in path]
+        # print(waypoints)
+
+        waypoints  = [[0, 0, 5, 0], [24, -24, 5, 0], [29, -19, 5, 0], [79, -19, 5, 0], [144, -84, 5, 0], [138, -90, 5, 0], [138, -150, 5, 0], [147, -159, 5, 0], [169, -159, 5, 0], [184, -174, 5, 0], [189, -169, 5, 0], [239, -169, 5, 0], [268, -198, 5, 0], [268, -200, 5, 0], [258, -210, 5, 0], [258, -220, 5, 0], [248, -230, 5, 0], [248, -270, 5, 0], [258, -280, 5, 0], [258, -290, 5, 0], [268, -300, 5, 0], [293, -300, 5, 0], [297, -304, 5, 0], [314, -304, 5, 0]]
         
         # Set self.waypoints
         self.waypoints = waypoints

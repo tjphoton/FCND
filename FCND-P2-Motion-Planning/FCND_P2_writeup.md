@@ -127,9 +127,12 @@ if x + 1 > m or y + 1 > n or grid[x + 1, y + 1] == 1:
     valid_actions.remove(Action.SOUTH_EAST)1] == 1:
 ```    
 
+The figure below shows the path found by the A* search algorithm, with **489** way points between start and goal points.
+![collinearity determinant](./misc/a_star_path.png)
+
 #### 6. Cull waypoints 
 
-Collinearity test is used to check whether waypoints are on the (almost) same stargith line. Then simply to prune the path of unnecessary waypoints that are in the middle of the same straight lines. 
+It is unnecessary to ask drone to stop at every waypoints on the way. To eliminate unnecessary waypoints in the path, we may evaluate whether or not some points are collinear, then remove everything but the endpoints of each collinear series of points.
 
 To check collinearity of two dimensional points, evaluating the determinant below. The determinant being equal to zero indicates that the area of the triangle described by those three points is zero and is a sufficient condition for collinearity:
 
@@ -171,8 +174,18 @@ def prune_path(path):
     return pruned_path
 ```
 
+After pruning unecessary waypoints, there are only **22** out of 489 waypointsleft in the path.
+
+![collinearity determinant](./misc/path_pruned.png)
+
 ### Execute the flight
-#### 1. Does it work?  It works!
+The drone in the simulator is able to fly following the found path. One problem is it takes such a long time for the A* algorithm to calculate the path. The connection between the script and simulator timeed out. I have to run the script twice, the first time to calculated the path, and the second time skip the calculation, fed previous calculated the waypoints to the simulator. The drone is able to fly from start to goal postion!
+
+![collinearity determinant](./misc/fly1.png)
+![collinearity determinant](./misc/fly2.png)
+![collinearity determinant](./misc/fly3.png)
+![collinearity determinant](./misc/fly4.png)
+
 
 ### Try flying more complex trajectories
 In this project, things are set up nicely to fly right-angled trajectories, where you ascend to a particular altitude, fly a path at that fixed altitude, then land vertically. However, you have the capability to send 3D waypoints and in principle you could fly any trajectory you like. Rather than simply setting a target altitude, try sending altitude with each waypoint and set your goal location on top of a building!
