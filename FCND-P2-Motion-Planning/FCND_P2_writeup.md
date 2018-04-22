@@ -1,4 +1,5 @@
-## Flying Car Nanodegree Program - Project 2: 3D Motion Planning
+## Flying Car Nanodegree Program
+## Project 2: 3D Motion Planning
 ![Quad Image](./misc/P2Cover.png)
 
 ---
@@ -6,7 +7,6 @@
 ### Explain the Starter Code
 
 #### 1. Explain the functionality of what's provided in `motion_planning.py` and `planning_utils.py`
-These scripts contain a basic planning implementation that includes...
 
 With simulator started up, when running out of the box with the command line 
  
@@ -15,8 +15,7 @@ source activate fcnd
 python motion_planning.py
 ```
 
-The quad fly a jerky path of waypoints to the northeast. It is becuase in the `planning_utils.py`, the grid path planning algorithm only implemented 4 possible actions, north, west, east, south. When asked to plan a goal position that is at a diagonal north east location, 
-the planner has no choice, but to give a solution to follow a jerky north, east, north, east, ... , north, east action path.
+The quad fly a jerky path of waypoints to the northeast. It is becuase in the `planning_utils.py`, the grid path planning algorithm only implemented 4 possible actions, north, west, east, south. When asked to find a path to the north east goal position diagonal to the start location, the planner has no choice but to give a solution to follow a jerky north, east, north, east, ... , north, east action path.
 
 The other difference about `motion_planning.py` from the `backyard_flyer_solution.py` script inlcudes:
 1. There is a new PLANNING state added, which is excuted after ARMING state and before TAKEOFF state.
@@ -29,17 +28,17 @@ The other difference about `motion_planning.py` from the `backyard_flyer_solutio
   * convert returned path to waypoints
 
 Most functions called by `plan_path()` is provided in `planning_utils.py`.
-  * create_grid() is the function to digitize the 2.5D map enviroment of free space and obstacle space into a grid representation of a 2D configuration space at given altitude and safety distance.
-  * Action() defines possible actions represented by a 3 element tuple. The first 2 values are the delta of the action relative to the current grid position. The third one is the cost of performing the action. The default implementation only has 4 possition actions to the north, east, south, west. If diagonal action is necessary, more actions need to be added to the list. 
-  * valid_actions() checks neighbor to make sure returned list of possible actions will not lead off the grid or bump into obstacle.
-  * a_star() is the path planning search algorithm to do the heavy lifting work. It exlore the 2D configuration space to find an optimal path based on minimizing the sum of two costs, the cost of the path from the start node to n, and a heuristic estimatng the cost of the cheapest path from n to the goal.
-  * heuristic() is an estimate of the minimum cost from any point to the goal. Manhattan distance or euclidean distance can be used as heuristic for a grid. In the starter code, the euclidean distance is implemented.
+  * `create_grid()` is the function to digitize the 2.5D map enviroment of free space and obstacle space into a grid representation of a 2D configuration space at given altitude and safety distance.
+  * `Action()` defines possible actions represented by a 3 element tuple. The first 2 values are the delta of the action relative to the current grid position. The third one is the cost of performing the action. The default implementation only has 4 possition actions to the north, east, south, west. If diagonal action is necessary, more actions need to be added to the list (see next section for implementations). 
+  * `valid_actions()` checks neighbors and return a list of possible actions that will not lead off the grid or bump into obstacle.
+  * `a_star()` is the path planning search algorithm doing the heavy lifting. It exlores the 2D configuration space to find an optimal path based on minimizing the sum of two costs, the cost of the path from the start node to expansion frontier, and a heuristic estimatng the cost of the cheapest path from expansion frontier to the goal.
+  * `heuristic()` is an estimate of the minimum cost from any point to the goal. Manhattan distance or euclidean distance can be used as heuristic for a grid. In the starter code, the euclidean distance is implemented.
 
 
 ### Implementing Path Planning Algorithm
 
 #### 1. Set global home position
-In my code, I read the first line of the csv file, extract lat0 and lon0 with the help of `split()` and `strip()` functions, then covert from string to floating point values. Lastly use the self.set_home_position() method to set global home. 
+In my code, the first line of the csv file is read to extract **lat0** and **lon0** with the help of `split()` and `strip()` functions, then they were coverted from string to floating point values. Lastly  the `set_home_position()` method is used to set global home position. Make sure in this function, parameter *lon0* is before *lat0*.
 
 ```
 # Read lat0, lon0 from colliders into floating point values
@@ -53,7 +52,7 @@ self.set_home_position(lon0, lat0, 0.0)
 ```
 
 #### 2. Set your current local position
-In the code, I retrieve current global position from `self._longitude, self._latitude, self._altitude`, then convert them to local position with `global_to_local()` function. Make sure the order of the parameters, global position is (lon, lat, up), local position is (north, east, down).
+In the code, current global position is retrieved from `self._longitude, self._latitude, self._altitude`, then converted to local position with `global_to_local()` function. Make sure the order of the parameters, global position is (lon, lat, up), local position is (north, east, down).
 
 But I found these lines of code are not necessary. Once global home position is set by `set_home_position()`. Local position is automatically been set. No need to call these function here, so I commented these lines out.
 
@@ -89,7 +88,7 @@ grid_goal = (int(goal_local[0])-north_offset,
 #### 5. Modify A* to include diagonal motion
 The code in planning_utils() is modified the A* implementation to include diagonal motions on the grid that have a cost of sqrt(2).
 
-Add the following diagnal motion to the `Action()` class:
+Add the following 4 possible diagnal motion actions to the `Action()` class:
 ```
 NORTH_WEST = (-1, -1, np.sqrt(2))
 NORTH_EAST = (-1, 1, np.sqrt(2))
@@ -97,7 +96,7 @@ SOUTH_WEST = (1, -1, np.sqrt(2))
 SOUTH_EAST = (1, 1, np.sqrt(2))
 ```
 
-and the following checks to the `valid_actions()` method:
+then add the following checks to the `valid_actions()` method to make sure they are not off the grid or bump into obstacle:
 ```
 # check if the node is off the grid or it's an obstacle
 
@@ -124,14 +123,21 @@ if x + 1 > m or y + 1 > n or grid[x + 1, y + 1] == 1:
 
 Collinearity test is used to check whether waypoints are on the (almost) same stargith line. Then simply to prune the path of unnecessary waypoints that are in the middle of the same straight lines. 
 
+To check collinearity of two dimensional points, evaluating the determinant with the z coordinate set to 1, the determinant being equal to zero indicates that the area of the triangle described by those three points is zero and is a sufficient condition for collinearity:
+
+![collinearity determinant](./misc/collinearity.png)
+
+In the real world, points might not be exactly on a line, but we may still treat them as collinear. A threshold, epsilon, may be introduced to indicate how close to zero the determinant must be in order to consider the points to be collinear. This allows us to impose a criterion for accepting points that are almost collinear.
 
 
 ```
+# check whether three points on collinear
 def collinearity_check(p1, p2, p3, epsilon=1e-6):   
     m = np.concatenate((p1, p2, p3), 0)
     det = np.linalg.det(m)
     return abs(det) < epsilon
 
+# remove middle point if three points are collinear
 def prune_path(path):
     # pruned_path = [p for p in path]
     pruned_path = path
