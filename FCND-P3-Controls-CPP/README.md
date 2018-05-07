@@ -1,9 +1,11 @@
 # The C++ Project Readme #
 
 
-* The project writeup can be found [here](https://github.com/tjphoton/FCND/blob/master/FCND-P3-Controls-CPP/flight_control.pdf)
+* The project writeup can be found in this [PDF file](https://github.com/tjphoton/FCND/blob/master/FCND-P3-Controls-CPP/flight_control.pdf)
 * Controller implementation is in [src/QuadControl.cpp](https://github.com/tjphoton/FCND/blob/master/FCND-P3-Controls-CPP/src/QuadControl.cpp)
 * Control gain configuration for the controller is in [config/QuadControlParams.txt](https://github.com/tjphoton/FCND/blob/master/FCND-P3-Controls-CPP/config/QuadControlParams.txt)
+
+---
 
 This is the readme for the C++ project.
 
