@@ -15,16 +15,21 @@
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{fancyvrb, newverbs, color}
+
 \lstset { %
     language=C++,
-    backgroundcolor=\color{black!5}, % set backgroundcolor
     basicstyle=\footnotesize,% basic font setting
+    keywordstyle=\color{blue}\ttfamily,
+    stringstyle=\color{red}\ttfamily,
+    commentstyle=\color{green}\ttfamily,
+    morecomment=[l][\color{magenta}]{\#}
 }
 
 \title{Udacity Flying Car Nanodegree 3rd Project\\ 
        Implement Controllers in C++}
 \author{Xinjie Qiu \\
-        qiuxinjie@gmail.com}
+		qiuxinjie@gmail.com}
 \date{\today}
 
 \begin{document}
@@ -46,7 +51,7 @@ To control the drone in three dimension, the following controller architecture i
 
 In the following subsections, each controller will be implemented in C++.
 
-\subsection{body rate control}
+\subsection{body rate control} \label{control:bodyrate}
 
 Body rate controller is implemented as a P (proportional) controller. It collects commanded roll, pitch, and yaw rates ($p, q, r$), then translates into the desired commanded moments along the axis. 
 
@@ -54,58 +59,53 @@ The control equations have the following form:
 $$ \dot{\omega}_{p} = k_{p}^{P} (p_c - p) $$
 $$ \dot{\omega}_{q} = k_{p}^{Q} (q_c - q) $$
 $$ \dot{\omega}_{r} = k_{p}^{R} (r_c - r) $$
-Quantity with subscript c means "commanded" (or "desired") one, without subscript means an "actual" (or more precisely speaking, "estimated") one.
+Note, throughout this document, quantity with subscript c means a "commanded" (or "desired") one, without subscript means an "actual" (or more precisely speaking, "estimated") one.
 
 The commanded moments (M, or torque $\tau$ in physics, in unit [$N \cdot m$]) is the product of moment of inertia ($I$, [$kg \cdot m^2$]) and angular acceleration ($\dot{\omega}$, [$radians/s^2$]).
 $$ M = I \dot{\omega} $$
 The implemented body rate controller is:
 
-\begin{lstlisting}
-    V3F momentCmd;
-    V3F rate_error = pqrCmd - pqr;
-    V3F omega_dot_des = rate_error * kpPQR;
-    momentCmd = omega_dot_des * V3F(Ixx, Iyy, Izz);
+\begin{lstlisting}[frame=single]
+	V3F momentCmd;
+	V3F rate_error = pqrCmd - pqr;
+	V3F omega_dot_des = rate_error * kpPQR;
+	momentCmd = omega_dot_des * V3F(Ixx, Iyy, Izz);
 \end{lstlisting}
 
-\subsection{roll pitch control}
-The roll-pitch controller is a P only controller responsible for commanding the roll and pitch rates in the body frame. It uses the lateral acceleration and thrust commands, in addition to the vehicle attitude to output a body rate command. 
+\subsection{roll pitch control} \label{control:rollpitch}
+The roll-pitch controller is the trickiest controller to implement due to that it involves rotation matrix from inertial frame to body frame. It is a P controller responsible for commanding the roll and pitch rates in the body frame. It uses the lateral acceleration and thrust commands, in addition to the vehicle attitude to output a body rate command. 
 
-This is the trickiest controller to implement due to that it involves rotation matrix from inertial frame to body frame.
-
-The controller first calculates the acceleration in the thrust direction in the body frame $c_d$ by dividing the collective thrust by drone's mass. Then the target angles are calculated from local accelerations. Note both target angles need to be constraint to maximum title angle.
+The controller first calculates the acceleration in the thrust direction in the body frame $c_d$ from dividing the collective thrust by drone's mass. Then the target angles are calculated from local accelerations. Note both target angles need to be constraint within maximum title angle.
 \begin{gather*}
-R_{13} = b^x_a = - \ddot{x} / c_d \\
-R_{23} = b^y_a = - \ddot{y} / c_d
+R_{13c} = b^x_c = - \ddot{x} / c_d \\
+R_{23c} = b^y_c = - \ddot{y} / c_d
 \end{gather*}
-The reason there's a minus sign is due to that the vertical component of thrust is negative in the NED coordinate system.
+The reason there is a minus sign is due to that the vertical component of thrust is negative in the NED coordinate system.
 
-The desired body rates are then set the rate of change of the given matrix elements using a P controller. 
-
-$$\dot{b}^x_c  = k_p(b^x_c - b^x_a)$$
-$$\dot{b}^y_c  = k_p(b^y_c - b^y_a)$$
-
-where $b^x_a = R_{13}$ and $b^y_a = R_{23}$. The given values can be converted into the angular velocities into the body frame by the next matrix multiplication. 
+The desired body rates are then set the rate of change of the given matrix elements using a P controller,
+$$\dot{b}^x_c  = k_p^{bank}(b^x_c - b^x)$$
+$$\dot{b}^y_c  = k_p^{bank}(b^y_c - b^y)$$
+where $b^x = R_{13}$ and $b^y = R_{23}$. The given values can be converted into the angular velocities in the body frame by the matrix multiplication. 
 
 $$
-\begin{pmatrix} p_c \\ q_c \\ \end{pmatrix}  = \frac{1}{R_{33}}\begin{pmatrix} R_{21} & -R_{11} \\ R_{22} & -R_{12} \end{pmatrix} \times \begin{pmatrix} \dot{b}^x_c \\ \dot{b}^y_c  \end{pmatrix} 
+\begin{pmatrix} p_c \\ q_c \\ \end{pmatrix}  = \frac{1}{R_{33}}\begin{pmatrix} R_{21} & -R_{11} \\ R_{22} & -R_{12} \end{pmatrix} \begin{pmatrix} \dot{b}^x_c \\ \dot{b}^y_c  \end{pmatrix} 
 $$
 
-\begin{lstlisting}
+\begin{lstlisting}[frame=single]
     V3F pqrCmd;
     Mat3x3F R = attitude.RotationMatrix_IwrtB();
     
     float c_d = collThrustCmd/mass;
-    float target_R13 = CONSTRAIN(-accelCmd.x/c_d, -maxTiltAngle, maxTiltAngle);
-    float target_R23 = CONSTRAIN(-accelCmd.y/c_d, -maxTiltAngle, maxTiltAngle);
-    float x_dot_cmd = kpBank*(R(0,2)-target_R13);
-    float y_dot_cmd = kpBank*(R(1,2)-target_R23);
-    
-    pqrCmd.x = (-R(1,0)*x_dot_cmd + R(0,0)*y_dot_cmd)/R(2,2);
-    pqrCmd.y = (-R(1,1)*x_dot_cmd + R(0,1)*y_dot_cmd)/R(2,2);
+    float R13_c = CONSTRAIN(-accelCmd.x/c_d, -maxTiltAngle, maxTiltAngle);
+    float R23_c = CONSTRAIN(-accelCmd.y/c_d, -maxTiltAngle, maxTiltAngle);
+    float bx_dot_cmd = kpBank*(R13_c - R(0,2));
+    float by_dot_cmd = kpBank*(R23_c - R(1,2));
+    pqrCmd.x = (R(1,0)*bx_dot_cmd - R(0,0)*by_dot_cmd)/R(2,2);
+    pqrCmd.y = (R(1,1)*bx_dot_cmd - R(0,1)*by_dot_cmd)/R(2,2);
     pqrCmd.z = 0.0;
 \end{lstlisting}
 
-\subsection{altitude controller}
+\subsection{altitude controller} \label{control:altitude}
 
 In this altitude controller implementation, velocity uses a feed forward P controller,
 $$\dot{z} = \dot{z}_c  + k_{p}^{posZ}(z_{c} - z) $$
@@ -120,7 +120,7 @@ $g$ is in positive direction, thrust is in negative direction in the NED system.
 $$ F_{thrust} = m (g - \ddot{z})/b^z$$ 
 
 The C++ implementation code:
-\begin{lstlisting}
+\begin{lstlisting}[frame=single]
     float velocityZ = kpPosZ * (posZCmd - posZ) + velZCmd;
     // Limit the ascent/descent rate
     velocityZ = CONSTRAIN(velocityZ, - maxAscentRate, maxDescentRate);
@@ -135,8 +135,9 @@ The C++ implementation code:
 
 \end{lstlisting}
 
-\subsection{lateral position control}
-The lateral position control uses two cascaded feed forward P controller to generate a commanded local acceleration from the local NE position, velocity and acceleration.
+\subsection{lateral position control} \label{control:lateral}
+The lateral position control uses two cascaded feedforward linear P controller to generate a commanded local acceleration from the local north/east position, velocity and acceleration.
+
 $$\dot{x} = \dot{x}_c  + k_{p}^{PosXY}(x_{c} - x), \:
   \dot{y} = \dot{y}_c  + k_{p}^{PosXY}(y_{c} - y)$$
 $$\ddot{x} = \ddot{x}_c  + k_{p}^{VelXY}(\dot{x_{c}} - \dot{x}), \:
@@ -144,7 +145,7 @@ $$\ddot{x} = \ddot{x}_c  + k_{p}^{VelXY}(\dot{x_{c}} - \dot{x}), \:
 
 \textit{I tried to constraint maximum XY velocity and maximum XY acceleration. But in the later gain tuning part, these constraints prevent the green drone in the $4^{th}$ scenario to reach its target location. For now, I just lift these constraints.}
 
-\begin{lstlisting}
+\begin{lstlisting}[frame=single]
     V3F velocity_xy = velCmd + kpPosXY*(posCmd-pos);
     // Limit speed
     // if (velocity_xy.mag() > maxSpeedXY)
@@ -156,18 +157,18 @@ $$\ddot{x} = \ddot{x}_c  + k_{p}^{VelXY}(\dot{x_{c}} - \dot{x}), \:
     //     accelCmd = accelCmd.norm() * maxAccelXY;
 \end{lstlisting}
 
-\subsection{yaw control}
+\subsection{yaw control} \label{control:yaw}
 The yaw controller is a linear proportional heading controller to yaw rate commands.
 The control over yaw is decoupled from the all other directions.
 $$ r_c = k_p^{yaw} (\psi_c - \psi) $$
 
-\begin{lstlisting}
+\begin{lstlisting}[frame=single]
     yawCmd = fmodf(yawCmd,M_PI*2.0);
     float yaw_error = AngleNormF(yawCmd - yaw);
     yawRateCmd = kpYaw*yaw_error;
 \end{lstlisting}
 
-\subsection{calculate the motor commands given commanded thrust and moments}
+\subsection{calculate the motor commands given commanded thrust and moments} \label{control:motorcommand}
 
 Using the desired or estimated position, velocity, attitude, and body rates information sent from the simulator, commands are passed from the above 5 controllers as three directional body moments and thrust. These desired 3-axis moment and collective thrust command are then converted to individual motor thrust commands.
 
@@ -209,7 +210,7 @@ F_4 = (F_{total} - \tau_x / l - \tau_y / l  -\tau_z / k_{appa})/4
 \end{align*}
 
 Motor command implementation in C++:
-\begin{lstlisting}
+\begin{lstlisting}[frame=single]
     float lenth = L / sqrtf(2);
     float F_total = collThrustCmd;
     float F_x     = momentCmd.x / lenth;
@@ -223,17 +224,171 @@ Motor command implementation in C++:
 
 \section{Flight Control Gain Tuning}
 
-The C++ controller is able to fly the provided test trajectory and visually passes inspection of the scenarios leading up to the test trajectory.
+Now we have all pieces of code for each controller. Let's fire up the simulator to test them out, and tune these control gain parameters in QuadControlParams.txt.
 
-\subsection{Intro (scenario 1)}
+\subsection{Scenario 1: Intro}
 
-\subsection{Body rate and roll/pitch control (scenario 2)}
+In the first scenario we want to make the vehicle more or less stay in the same spot. Because in the starter code, thrust of each propeller is simply being set to: $QuadControlParams.Mass*9.81/4$.
 
-\subsection{Position/velocity and yaw angle control (scenario 3)}
+To make drone not falling to the ground, drone's gravity need to be compensated from propeller's thrust force. All we have to do is to adjust the Mass control parameter in QuadControlParams.txt to match the physical property mass in QuadPhysicalParams.txt. Changing $Mass = 0.5$ is all it takes to stabilize the drone. Scenario 1 picture from simulator is shown in Figure~\ref{fig:scenario1}.
 
-\subsection{Non-idealities and robustness (scenario 4)}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario1.png}
+\caption{\label{fig:scenario1} Scenario 1 Tuning Mass.}
+\end{figure}
 
-\subsection{Tracking trajectories (scenario 5)}
+\subsection{Scenario 2: Body rate and roll/pitch control}
 
+Scenario 2 in the simulator is to help check the correctness of the body rate and roll/pitch controller implementation. It also helps to tune control gain parameters for these controllers.
+
+The following functions need to be implemented, and the gains need to be tuned: 
+\begin{description}
+
+\item [GenerateMotorCommands()] The motor command implementation can be found in subsection~\ref{control:motorcommand}. No gain tuning for this function.
+
+\item [BodyRateControl()] The body rate control implementation can be found in subsection~\ref{control:bodyrate}. Tuning kpPQR helps to get the vehicle to stop spinning quickly once the rotation of the vehicle about roll (omega.x) get controlled to zero. The default kpPQR gains work for this scenario, no need to change them.
+\begin{Verbatim}[frame=single]
+# Angle rate gains
+kpPQR = 23, 23, 5
+\end{Verbatim} 
+
+\item [RollPitchControl()] The roll pitch control implementation can be found in subsection~\ref{control:rollpitch}. Tune kpBank minimize settling time and avoid too much overshoot. Quad level itself and vehicle angle (Roll) get controlled to zero. Gain kpBank need to tune up from 5 to 8 for this scenarios.
+\begin{Verbatim}[frame=single,commandchars=\\\{\}]
+# Angle control gains
+kpBank = \textcolor{red}{8}
+\end{Verbatim} 
+
+\end{description}
+
+After the gain tuning, the simulator output the following test result:
+\begin{Verbatim}[frame=lines, label=Simulator Test Result Output, commandchars=\\\{\}]
+
+Simulation #751 (../config/2_AttitudeControl.txt)
+\textcolor{green}{PASS}: ABS(Quad.Roll) was less than 0.025000 for at least 0.750000 seconds
+\textcolor{green}{PASS}: ABS(Quad.Omega.X) was less than 2.500000 for at least 0.750000 seconds
+\end{Verbatim} 
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario2.png}
+\caption{\label{fig:scenario2} Scenario 2 Body rate and roll/pitch control.}
+\end{figure}
+
+\subsection{Scenario 3: Position/velocity and yaw angle control}
+
+Scenario 3 in the simulation helps to test the implementation of the position, altitude and yaw control for the quad. Two identical quads are created, one offset from its target point with yaw initialized to 0, the second offset from target point with yaw = 45 degrees.
+
+\begin{description}
+\item [LateralPositionControl()] The code for lateral position  control is implemented in~\ref{control:altitude}. 
+
+\item [AltitudeControl()] The code for altitude control is implemented in~\ref{control:lateral}. 
+
+Tuning parameters kpPosZ, kpVelZ, kpVelXY and kpVelXY find out only kpPosXY need to be changed from 1 to 2 to make the quads go to their destination points and tracking error go down. 
+
+\begin{Verbatim}[frame=single,commandchars=\\\{\}]
+# Position control gains
+kpPosZ = 1
+kpPosXY = \textcolor{red}{2}
+# Velocity control gains
+kpVelXY = 4
+kpVelZ = 4
+\end{Verbatim} 
+
+However, one quad remains rotated in yaw. It requires the yaw control in the next paragraph. 
+
+\item [YawControl()] The code for yaw control is implemented in~\ref{control:yaw}. Tuning parameters kpYaw from 1 to 2 makes the simulation pass the yaw control test.
+% and the 3rd (z) component of kpPQR. 
+% Tune position control for settling time. 
+
+\begin{Verbatim}[frame=single,commandchars=\\\{\}]
+# Angle control gains
+kpYaw = \textcolor{red}{2}
+\end{Verbatim} 
+
+\end{description}
+
+\begin{Verbatim}[frame=lines, label=Simulator Test Result Output, commandchars=\\\{\}]
+
+Simulation #1128 (../config/3_PositionControl.txt)
+\textcolor{green}{PASS}: ABS(Quad1.Pos.X) was less than 0.100000 for at least 1.250000 seconds
+\textcolor{green}{PASS}: ABS(Quad2.Pos.X) was less than 0.100000 for at least 1.250000 seconds
+\textcolor{green}{PASS}: ABS(Quad2.Yaw) was less than 0.100000 for at least 1.000000 seconds
+\end{Verbatim}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario3.png}
+\caption{\label{fig:scenario3} Scenario 3 Position/velocity and yaw angle control.}
+\end{figure}
+
+\subsection{Scenario 4: Non-idealities and robustness}
+
+Scenario 4 simulation explores the non-ideality and robustness of controllers. Three quads are configured to move one meter forward. However, these quads have different physical characteristics:
+
+\begin{itemize}
+\item The green quad has its center of mass shifted back
+\item The orange vehicle is an ideal quad
+\item The red vehicle is heavier than usual
+\end{itemize}
+
+With controller gain parameters set from the previuos step, not all the quads  moving along to the target. Adding integral control in AltitudeControl() helps with the different-mass vehicle. Further tweaking the controller parameters is necessary to make all the vehicles successfully move properly  to pass the simulator test in this scenario, see Figure~\ref{fig:scenario4}.
+
+\begin{Verbatim}[frame=single, commandchars=\\\{\}]
+# Position control gains
+kpPosXY = \textcolor{red}{2.5}
+kpPosZ = \textcolor{red}{4}
+KiPosZ = \textcolor{red}{10}
+
+# Velocity control gains
+kpVelXY = \textcolor{red}{10}
+kpVelZ = \textcolor{red}{16}
+
+# Angle control gains
+kpBank = \textcolor{red}{10}
+kpYaw = \textcolor{red}{2}
+
+# Angle rate gains
+kpPQR = \textcolor{red}{60}, \textcolor{red}{60}, 5
+\end{Verbatim}
+
+\begin{Verbatim}[frame=lines, label=Simulator Test Result Output, commandchars=\\\{\}]
+Simulation #1278 (../config/4_Nonidealities.txt)
+\textcolor{green}{PASS}: ABS(Quad1.PosFollowErr) was less than 0.100000 for at least 1.500000 seconds
+\textcolor{green}{PASS}: ABS(Quad2.PosFollowErr) was less than 0.100000 for at least 1.500000 seconds
+\textcolor{green}{PASS}: ABS(Quad3.PosFollowErr) was less than 0.100000 for at least 1.500000 seconds
+\end{Verbatim}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario4.png}
+\caption{\label{fig:scenario4} Scenario 4 Non-idealities and robustness.}
+\end{figure}
+
+\subsection{Scenario 5: Tracking trajectories}
+
+Scenario 5 put all working parts of a controller together and test its performance on a yet another complex trajectory. This scenario has two quadcopters: each one follows a Figure-8 trajectory. Without any further gain tuning from previous scenario, both of the drone are able to hold to the path fairly well, shown in Figure~\ref{fig:scenario5}.
+
+\begin{Verbatim}[frame=lines, label=Simulator Test Result Output, commandchars=\\\{\}]
+
+Simulation #1285 (../config/5_TrajectoryFollow.txt)
+\textcolor{green}{PASS}: ABS(Quad2.PosFollowErr) was less than 0.250000 for at least 3.000000 seconds
+\end{Verbatim}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario5.png}
+\caption{\label{fig:scenario5} Scenario 5 Tracking trajectories.}
+\end{figure}
+
+\subsection{Bonus Scenario: Test many quards}
+
+Now the C++ controller is able to fly the all provided test trajectories and passes inspection of all 5 test scenarios. Let's put it into an extra bonus test trajectory with many many quads all together (Figure~\ref{fig:scenario_test1}). It's so cool! 
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{./fig/scenario_test1.png}
+\caption{\label{fig:scenario_test1} Bonus Scenario: Test many quards.}
+\end{figure}
 
 \end{document}

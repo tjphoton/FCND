@@ -1,4 +1,3 @@
-
 # The C++ Project Readme #
 
 This is the readme for the C++ project.
@@ -46,9 +45,10 @@ For Mac OS X, the recommended IDE is XCode, which you can get via the App Store.
 For Linux, the recommended IDE is QtCreator.
 
 1. Download and install QtCreator.
-2. Open the project from the `<simulator>/project` directory.
-3. Compile and run the project.  You should see a single quadcopter, falling down.
+2. Open the `.pro` file from the `<simulator>/project` directory.
+3. Compile and run the project (using the tab `Build` select the `qmake` option.  You should see a single quadcopter, falling down.
 
+**NOTE:** You may need to install the GLUT libs using `sudo apt-get install freeglut3-dev`
 
 ## Simulator Walkthrough ##
 
@@ -117,7 +117,16 @@ With the proper mass, your simulation should look a little like this:
 
 ## The Tasks ##
 
-For this project, you will be rebuilding your python controller into C++.  Much like in python, you will be implementing this controller in several steps.
+For this project, you will be building a controller in C++.  You will be implementing and tuning this controller in several steps.
+
+You may find it helpful to consult the [Python controller code](https://github.com/udacity/FCND-Controls/blob/solution/controller.py) as a reference when you build out this controller in C++.
+
+#### Notes on Parameter Tuning
+1. **Comparison to Python**: Note that the vehicle you'll be controlling in this portion of the project has different parameters than the vehicle that's controlled by the Python code linked to above. **The tuning parameters that work for the Python controller will not work for this controller**
+
+2. **Parameter Ranges**: You can find the vehicle's control parameters in a file called `QuadControlParams.txt`. The default values for these parameters are all too small by a factor of somewhere between about 2X and 4X. So if a parameter has a starting value of 12, it will likely have a value somewhere between 24 and 48 once it's properly tuned.
+
+3. **Parameter Ratios**: In this [one-page document](https://www.overleaf.com/read/bgrkghpggnyc#/61023787/) you can find a derivation of the ratio of velocity proportional gain to position proportional gain for a critically damped double integrator system. The ratio of `kpV / kpP` should be 4.
 
 ### Body rate and roll/pitch control (scenario 2) ###
 
@@ -129,17 +138,17 @@ To accomplish this, you will:
 
  - implement the code in the function `GenerateMotorCommands()`
  - implement the code in the function `BodyRateControl()`
- - Tune `Kp_pqr` in `QuadControlParams.txt` to get the vehicle to stop spinning quickly but not overshoot
+ - Tune `kpPQR` in `QuadControlParams.txt` to get the vehicle to stop spinning quickly but not overshoot
 
 If successful, you should see the rotation of the vehicle about roll (omega.x) get controlled to 0 while other rates remain zero.  Note that the vehicle will keep flying off quite quickly, since the angle is not yet being controlled back to 0.  Also note that some overshoot will happen due to motor dynamics!.
 
-If you come back to this step after the next step, you can try tuning just the body rate omega (without the outside angle controller) by setting `QuadControlParams.Kp_bank = 0`.
+If you come back to this step after the next step, you can try tuning just the body rate omega (without the outside angle controller) by setting `QuadControlParams.kpBank = 0`.
 
 2. Implement roll / pitch control
 We won't be worrying about yaw just yet.
 
  - implement the code in the function `RollPitchControl()`
- - Tune `Kp_bank` in `QuadControlParams.txt` to minimize settling time but avoid too much overshoot
+ - Tune `kpBank` in `QuadControlParams.txt` to minimize settling time but avoid too much overshoot
 
 If successful you should now see the quad level itself (as shown below), though it’ll still be flying away slowly since we’re not controlling velocity/position!  You should also see the vehicle angle (Roll) get controlled to 0.
 
@@ -154,13 +163,13 @@ Next, you will implement the position, altitude and yaw control for your quad.  
 
  - implement the code in the function `LateralPositionControl()`
  - implement the code in the function `AltitudeControl()`
- - tune parameters `Kp_pos_z` and `Kp_vel_z`
- - tune parameters `Kp_vel_xy` and `Kp_vel_z`
+ - tune parameters `kpPosZ` and `kpPosZ`
+ - tune parameters `kpVelXY` and `kpVelZ`
 
 If successful, the quads should be going to their destination points and tracking error should be going down (as shown below). However, one quad remains rotated in yaw.
 
  - implement the code in the function `YawControl()`
- - tune parameters `Kp_yaw` and the 3rd (z) component of `Kp_pqr`
+ - tune parameters `kpYaw` and the 3rd (z) component of `kpPQR`
 
 Tune position control for settling time. Don’t try to tune yaw control too tightly, as yaw control requires a lot of control authority from a quadcopter and can really affect other degrees of freedom.  This is why you often see quadcopters with tilted motors, better yaw authority!
 
@@ -168,6 +177,7 @@ Tune position control for settling time. Don’t try to tune yaw control too tig
 <img src="animations/scenario3.gif" width="500"/>
 </p>
 
+**Hint:**  For a second order system, such as the one for this quadcopter, the velocity gain (`kpVelXY` and `kpVelZ`) should be at least ~3-4 times greater than the respective position gain (`kpPosXY` and `kpPosZ`).
 
 ### Non-idealities and robustness (scenario 4) ###
 
@@ -247,3 +257,7 @@ The specific performance metrics are as follows:
 
  - scenario 5
    - position error of the quad should be less than 0.25 meters for at least 3 seconds
+
+## Authors ##
+
+Thanks to Fotokite for the initial development of the project code and simulator.
