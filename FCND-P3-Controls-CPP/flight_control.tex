@@ -1,4 +1,4 @@
-\documentclass[a4paper]{article}
+\documentclass[letterpaper]{article}
 
 %% Language and font encodings
 \usepackage[english]{babel}
@@ -6,7 +6,8 @@
 \usepackage[T1]{fontenc}
 
 %% Sets page size and margins
-\usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+\usepackage[letterpaper, margin=0.75in]{geometry}
+% top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
 
 %% Useful packages
 \usepackage{amsmath}
@@ -29,7 +30,7 @@
 \title{Udacity Flying Car Nanodegree 3rd Project\\ 
        Implement Controllers in C++}
 \author{Xinjie Qiu \\
-		qiuxinjie@gmail.com}
+        qiuxinjie@gmail.com}
 \date{\today}
 
 \begin{document}
@@ -66,10 +67,10 @@ $$ M = I \dot{\omega} $$
 The implemented body rate controller is:
 
 \begin{lstlisting}[frame=single]
-	V3F momentCmd;
-	V3F rate_error = pqrCmd - pqr;
-	V3F omega_dot_des = rate_error * kpPQR;
-	momentCmd = omega_dot_des * V3F(Ixx, Iyy, Izz);
+    V3F momentCmd;
+    V3F rate_error = pqrCmd - pqr;
+    V3F omega_dot_des = rate_error * kpPQR;
+    momentCmd = omega_dot_des * V3F(Ixx, Iyy, Izz);
 \end{lstlisting}
 
 \subsection{roll pitch control} \label{control:rollpitch}
@@ -158,8 +159,8 @@ $$\ddot{x} = \ddot{x}_c  + k_{p}^{VelXY}(\dot{x_{c}} - \dot{x}), \:
 \end{lstlisting}
 
 \subsection{yaw control} \label{control:yaw}
-The yaw controller is a linear proportional heading controller to yaw rate commands.
-The control over yaw is decoupled from the all other directions.
+The control over yaw is decoupled from the all other directions. It is a linear proportional heading controller to command yaw rate. Since heading angle has to be between 0 and $2\pi$, fmodf() function is used to constraint the input heading angle. The correction from this desired heading to the estimated heading is then normalized to between $-\pi$ and $\pi$ to make sure the correction is made to the nearest heading. 
+
 $$ r_c = k_p^{yaw} (\psi_c - \psi) $$
 
 \begin{lstlisting}[frame=single]
@@ -353,6 +354,7 @@ kpPQR = \textcolor{red}{60}, \textcolor{red}{60}, 5
 \end{Verbatim}
 
 \begin{Verbatim}[frame=lines, label=Simulator Test Result Output, commandchars=\\\{\}]
+
 Simulation #1278 (../config/4_Nonidealities.txt)
 \textcolor{green}{PASS}: ABS(Quad1.PosFollowErr) was less than 0.100000 for at least 1.500000 seconds
 \textcolor{green}{PASS}: ABS(Quad2.PosFollowErr) was less than 0.100000 for at least 1.500000 seconds
