@@ -85,7 +85,7 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   //  - there are several ways to go about this, including:
   //    1) create a rotation matrix based on your current Euler angles, integrate that, convert back to Euler angles
   //    OR 
-  //    2) use the Quaternion<float> class, which has a handy FromEuler123_RPY function for creating a quaternion from Euler Roll/PitchYaw
+  //    2) use the Quaternion<float> class, which has a handy FromEuler123_RPY function for creating a quaternion from Euler Roll/Pitch/Yaw
   //       (Quaternion<float> also has a IntegrateBodyRate function, though this uses quaternions, not Euler angles)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
@@ -93,25 +93,39 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   // (replace the code below)
   // make sure you comment it out when you add your own code -- otherwise e.g. you might integrate yaw twice
 
-  float predictedPitch = pitchEst + dtIMU * gyro.y;
-  float predictedRoll = rollEst + dtIMU * gyro.x;
-  ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
+//  float predictedPitch = pitchEst + dtIMU * gyro.y;
+//  float predictedRoll = rollEst + dtIMU * gyro.x;
+//  ekfState(6) = ekfState(6) + dtIMU * gyro.z;    // yaw
+//
+//  // normalize yaw to -pi .. pi
+//  if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
+//  if (ekfState(6) < -F_PI) ekfState(6) += 2.f*F_PI;
 
-  // normalize yaw to -pi .. pi
-  if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
-  if (ekfState(6) < -F_PI) ekfState(6) += 2.f*F_PI;
-
+    // Nonlinear Complementary Filter
+    // use euler angles to define a quaternion
+    Quaternion<float> q_t = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
+    
+    // integrate the body rates into a new predicted quaternion
+    Quaternion<float>  q_t_bar = q_t.IntegrateBodyRate(V3D(gyro.x, gyro.y, gyro.z), dtIMU);
+    
+    // extract roll, pitch, yaw from new quaternion
+    float predictedRoll  = q_t_bar.Roll();
+    float predictedPitch = q_t_bar.Pitch();
+    ekfState(6)    = q_t_bar.Yaw();
+    
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   // CALCULATE UPDATE
   accelRoll = atan2f(accel.y, accel.z);
   accelPitch = atan2f(-accel.x, 9.81f);
 
-  // FUSE INTEGRATION AND UPDATE
-  rollEst = attitudeTau / (attitudeTau + dtIMU) * (predictedRoll)+dtIMU / (attitudeTau + dtIMU) * accelRoll;
-  pitchEst = attitudeTau / (attitudeTau + dtIMU) * (predictedPitch)+dtIMU / (attitudeTau + dtIMU) * accelPitch;
-
-  lastGyro = gyro;
+    // FUSE INTEGRATION AND UPDATE
+    rollEst = attitudeTau / (attitudeTau + dtIMU) * predictedRoll +
+    dtIMU / (attitudeTau + dtIMU) * accelRoll;
+    pitchEst = attitudeTau / (attitudeTau + dtIMU) * predictedPitch +
+    dtIMU / (attitudeTau + dtIMU) * accelPitch;
+    
+    lastGyro = gyro;
 }
 
 void QuadEstimatorEKF::UpdateTrueError(V3F truePos, V3F trueVel, Quaternion<float> trueAtt)
@@ -161,7 +175,16 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
   Quaternion<float> attitude = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, curState(6));
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+    // rotates acceleration vector in body coordinate to global coords
+    V3F accel_i = attitude.Rotate_BtoI(accel);
+    
+    // predict the current state using current accelerations and body rates
+    predictedState(0) += curState(3)*dt;
+    predictedState(1) += curState(4)*dt;
+    predictedState(2) += curState(5)*dt;
+    predictedState(3) += accel_i.x*dt;
+    predictedState(4) += accel_i.y*dt;
+    predictedState(5) += (accel_i.z - CONST_GRAVITY)*dt;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -188,7 +211,20 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
   //   that your calculations are reasonable
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+    float cosTheta = cos(pitch);
+    float sinTheta = sin(pitch);
+    float cosPhi   = cos(roll);
+    float sinPhi   = sin(roll);
+    float cosPsi   = cos(yaw);
+    float sinPsi   = sin(yaw);
+    
+    RbgPrime(0,0)  = -cosTheta*sinPsi;
+    RbgPrime(0,1)  = -sinPhi*sinTheta*sinPsi - cosTheta*cosPsi;
+    RbgPrime(0,2)  = -cosPhi*sinTheta*sinPsi + sinPhi*cosPsi;
+    RbgPrime(1,0)  = -cosTheta*cosPsi;
+    RbgPrime(1,1)  = sinPhi*sinTheta*cosPsi - cosTheta*sinPsi;
+    RbgPrime(1,2)  = cosPhi*sinTheta*cosPsi + sinPhi*sinPsi;
+    // the last row of the matrix are all zeros
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -234,8 +270,14 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
   gPrime.setIdentity();
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
-
+    gPrime(0,3) = dt;
+    gPrime(1,4) = dt;
+    gPrime(2,5) = dt;
+    gPrime(3,6) = (RbgPrime(0)*accel).sum()*dt;
+    gPrime(4,6) = (RbgPrime(1)*accel).sum()*dt;
+    gPrime(5,6) = (RbgPrime(2)*accel).sum()*dt;
+    
+    ekfCov = gPrime * ekfCov * gPrime.transpose() + Q;
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   ekfState = newState;
@@ -259,7 +301,14 @@ void QuadEstimatorEKF::UpdateFromGPS(V3F pos, V3F vel)
   //  - The GPS measurement covariance is available in member variable R_GPS
   //  - this is a very simple update
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+    hPrime.topLeftCorner(6, 6) = MatrixXf::Identity(6, 6);
+    
+    zFromX(0) = ekfState(0);
+    zFromX(1) = ekfState(1);
+    zFromX(2) = ekfState(2);
+    zFromX(3) = ekfState(3);
+    zFromX(4) = ekfState(4);
+    zFromX(5) = ekfState(5);
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   Update(z, hPrime, R_GPS, zFromX);
@@ -280,7 +329,14 @@ void QuadEstimatorEKF::UpdateFromMag(float magYaw)
   //    (you don't want to update your yaw the long way around the circle)
   //  - The magnetomer measurement covariance is available in member variable R_Mag
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
-
+    hPrime << 0, 0, 0, 0, 0, 0, 1;
+    
+    zFromX(0) = ekfState(6);
+    float angle_diff = fmod(zFromX(0) - z(0), (2.0f*(float)M_PI));
+    if (angle_diff <= -(float)M_PI)
+        zFromX(0) += (2.0f*(float)M_PI);
+    else if (angle_diff > (float)M_PI)
+        zFromX(0) -= (2.0f*(float)M_PI);
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
