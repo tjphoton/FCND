@@ -140,12 +140,12 @@ The vehicle's attitude state, $x_t$ consists pitch $\theta$ and roll $\phi$.
   x_t = \left[ \begin{array}{c}\theta\\\phi \end{array} \right]
 \end{align*}
 
-The observation, $z_t$ consists angle pitch $\theta$, roll $\phi$ as estimated from the accelerometer in the global frame, and the angular velocity $p$ and $q$ from the gyro in the body frame.
+The observation, $z_t$ consists angles pitch $\theta$ and roll $\phi$ as estimated from the accelerometer in the global frame, and the angular velocity $p$ and $q$ from the gyro in the body frame.
 \begin{align*}
   z_t = \left[ \begin{array}{c}\theta\\\phi\\p\\q \end{array} \right]
 \end{align*}
 
-Since the pitch and roll angle obtained by an accelerometer has a large noise but a small drift, while pitch and roll angles estimated by integrating angular velocity from gyro sensor have a little noise but a large drift, a linear complementary filter expressed below can obtain a more accurate attitude estimation, due to high-frequency noise attenuated after passing the low-pass filter, and the low-frequency signal be eliminated after passing the high-pass filter.
+Since the pitch and roll angles obtained by an accelerometer have large noises but a small drift, while pitch and roll angles estimated by integrating angular velocity from gyro sensor have a little noise but a large drift, a linear complementary filter expressed below can obtain a more accurate attitude estimation, due to high-frequency noise attenuated after passing the low-pass filter, and the low-frequency signal be eliminated after passing the high-pass filter.
 
 For pitch: 
 \begin{align*}
@@ -170,7 +170,7 @@ Assume that $\theta$ and $\phi$ are small, so that the turn rates measured by th
   \left[\begin{array}{c}p\\q\\r\end{array}\right]  
 \end{align*}
 
-This allows us to use a linear complementary filter-type attitude filter, which is already implemented in QuadEstimatorEKF.cpp function UpdateFromIMU(), quoted below:
+This allows us to use a linear complementary filter-type attitude filter, which is already implemented in the function UpdateFromIMU() in QuadEstimatorEKF.cpp, quoted below:
 
 \begin{CPP}
 void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
@@ -211,14 +211,14 @@ In scenario 7 AttitudeEstimation simulation, IMU is the only sensor used and noi
 
 We will improve the altitude estimation with implementation of a better non-linear complementary attitude filter using quaternions.
 
-First, we use the state to define a quaternion, $q_t$, for the euler angles for $\theta$ , $\phi$ and $\psi$.  The included Quaternion class has a handy \textit{Quaternion::FromEuler123\_RPY()} function for creating a quaternion from Euler Roll/Pitch/Yaw:
+First, we define a quaternion, $q_t$, from the euler angles for $\theta$ , $\phi$ and $\psi$.  The included Quaternion class has a handy Quaternion::FromEuler123\_RPY() function for creating a quaternion from Euler Roll/Pitch/Yaw angles:
 
 \begin{CPP}
 // use euler angles to define a quaternion
 Quaternion<float> q_t = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6));
 \end{CPP}
 
-Then the predicted quaternion, $\bar{q}_t$, can be obtained by integrating the measurement of the angular rates from the IMU in the body frame with the included Quaternion class \textit{Quaternion::IntegrateBodyRate()} function:
+Then the predicted quaternion, $\bar{q}_t$, can be obtained by integrating the measurement of the angular rates from the IMU in the body frame with the included Quaternion class Quaternion::IntegrateBodyRate() function:
 
 \begin{CPP}
 // integrate the body rates into a new predicted quaternion
@@ -296,7 +296,7 @@ The new non-linear complementary filter reduces the attitude errors from 0.2 rad
 
 Scenario 08 PredictState is configured to use a perfect IMU (only an IMU). 
 
-The state, $x_t$ we are estimating (excluding yaw, which is updated in the IMU update) will be position and velocity,
+The state, $x_t$ we are estimating (excluding yaw, which is updated in the IMU update) position and velocity,
 \begin{align*}
   x_t = \left[\begin{array}{c} 
       x\\
@@ -478,11 +478,11 @@ First we take the Jacobian:
     \right]
 \end{align}
 
-Then update covariance according the classic EKF algorithm update equationto calculate the predictied state covariance in each step:
+Then update covariance according to the classic EKF algorithm update equations to calculate the predictied state covariance in each update step:
 
 $$G_t = g'(x_t, u_t, \Delta t)$$
 $$\bar{\Sigma}_t = G_t\Sigma_{t-1}G_t^T + Q_t$$
-where $\Sigma_t$ is the covariance matrix, and $Q_t$ is the transition or prediction covariance.
+where $\Sigma_t$ is the state covariance matrix, and $Q_t$ is the transition covariance.
 
 \begin{CPP}
 void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
@@ -719,7 +719,7 @@ QVelZStd = \textcolor{red}{.1}
 
 \section{Adding Previously Implemented Controller}
 
-Replace QuadController.cpp with the controller and uadControlParams.txt with the control parameters from in the last project. Run scenario 11 GPSUpdate, the entire simulation cycle is completed once again with an estimated position error of < 1m, shown in Fig~\ref{fig:GPS_update2}.
+Replace QuadController.cpp with the controller and uadControlParams.txt with the control parameters from in the last project. Run scenario 11 GPSUpdate, the entire simulation cycle is completed once again with an estimated position error of < 1m, shown in Fig~\ref{fig:GPS_update2}, without de-tuning any control gains.
 
 \begin{figure}[ht]
 \centering
